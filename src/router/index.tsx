@@ -27,27 +27,30 @@ const routes = [
     id: 'root',
     path: '/',
     loader: rootAuthLoader,
+    element: <Layout />,
     children: [
       {
         id: 'redirect to /home',
         path: '',
-        element: <Navigate replace to="/home/main" />
+        element: <Navigate replace to="/home" />
       },
       {
-        element: <Layout />,
         id: '主页',
         path: 'home',
         handle: {
           title: '主页',
           icon: 'appstore-outlined'
         },
-        children: [
-          {
-            id: '主页-main',
-            path: 'main',
-            element: lazyLoad(React.lazy(async () => import('@/pages/home')))
-          }
-        ]
+        element: lazyLoad(React.lazy(async () => import('@/pages/home')))
+      },
+      {
+        handle: {
+          title: 'FFmpeg',
+          icon: 'appstore-outlined'
+        },
+        id: 'FFmpeg',
+        path: 'FFmpeg',
+        element: lazyLoad(React.lazy(async () => import('@/pages/home/FFmpeg')))
       }
     ]
   },

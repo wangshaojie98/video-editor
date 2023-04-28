@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
 import { useEffect, useState } from 'react'
 import { Box, FlexBox } from '@/styled_components/base'
+
 import VideoUrl from '/assets/videos/big_buck_bunny.mp4'
 console.log('VideoUrl: ', VideoUrl)
 
@@ -32,6 +33,7 @@ const Demo = () => {
             currentTime += 10
             console.log('currentTime: ', currentTime)
             if (currentTime >= video.duration) {
+              console.log('video.duration: ', video.duration)
               clearInterval(timer)
             }
           },

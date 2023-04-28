@@ -22,7 +22,11 @@ export default defineConfig({
         // rewrite: (path) => path.replace(/^\/api\/neptune/, ''),
         changeOrigin: true
       }
-    }
+    },
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
   },
   css: {
     //* css模块化
