@@ -56,7 +56,6 @@ const Demo = () => {
             <source src={VideoUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
-          {/* <canvas id="my-canvas"></canvas> */}
         </section>
 
         <section>
