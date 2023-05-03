@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { observer } from 'mobx-react'
 import _ from 'lodash'
 import { AbsoluteBox, Box, FlexBox } from '@/styled_components/base'
@@ -6,12 +6,13 @@ import VideoCanvas from './VideoCanvas'
 import VideoURL from '/assets/videos/big_buck_bunny.mp4'
 import Subtitles from './subtitles.json'
 import VideoStore from './videoStore'
+import useDraggable from './useDraggable'
 
 const FFmpeg = () => {
   const [videoStore] = useState(() => new VideoStore())
-  const imageFrameRef = useRef(null)
+  const imageFrameRef = useRef<FlexBox>(null)
   const rightRef = useRef(null)
-  const leftRef = useRef(null)
+  const leftRef = useRef<AbsoluteBox>(null)
 
   useEffect(() => {
     const video = document.createElement('video')
@@ -25,90 +26,50 @@ const FFmpeg = () => {
     return () => {}
   }, [])
 
-  const onStartTimeMove = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    const thumb = leftRef.current as unknown as HTMLElement
-    const slider = imageFrameRef.current as unknown as HTMLElement
-    event.preventDefault()
+  const onStartTimeMove = useDraggable(
+    useCallback(
+      (newLeft: number) => {
+        if (newLeft < 0) {
+          newLeft = 0
+        }
+        const rightEdge =
+          videoStore.totalImageFrameWidth -
+          (leftRef.current as unknown as HTMLDivElement).offsetWidth
+        if (newLeft > rightEdge) {
+          newLeft = rightEdge
+        }
+        ;(leftRef.current as unknown as HTMLDivElement).style.left = `${newLeft}px`
+        videoStore.setLeftMaskWidth(newLeft)
+        videoStore.moveStartTime(newLeft)
+      },
+      [videoStore, leftRef]
+    )
+  )
 
-    // 记录鼠标相对于元素的偏移量
-    const shiftX = event.clientX - thumb.getBoundingClientRect().left
-    // 因为拖动只会水平移动，所以不需要记录 shiftY
+  const onEndTimeMove = useDraggable(
+    useCallback(
+      (newLeft: number) => {
+        const thumb = rightRef.current as unknown as HTMLDivElement
 
-    // 添加鼠标移动和释放事件监听器
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
+        // 如果元素已经超出了左边界，则将其锁定在边界上
+        if (newLeft < 0) {
+          newLeft = 0
+        }
+        // 如果元素已经超出了右边界，则将其锁定在边界上
+        const rightEdge = videoStore.totalImageFrameWidth - thumb.offsetWidth
+        if (newLeft > rightEdge) {
+          newLeft = rightEdge
+        }
 
-    // 当鼠标移动时
-    function onMouseMove(ev: MouseEvent) {
-      // 计算元素新的左偏移量
-      let newLeft = ev.clientX - shiftX - slider.getBoundingClientRect().left
+        // 设置元素的新位置
+        ;(rightRef.current as unknown as HTMLElement).style.left = `${newLeft}px`
+        videoStore.setVideoImageFrameWidth(newLeft)
+        videoStore.moveEndTime(newLeft + thumb.offsetWidth)
+      },
+      [videoStore, rightRef]
+    )
+  )
 
-      // 如果元素已经超出了左边界，则将其锁定在边界上
-      if (newLeft < 0) {
-        newLeft = 0
-      }
-      // 如果元素已经超出了右边界，则将其锁定在边界上
-      const rightEdge = videoStore.totalImageFrameWidth - thumb.offsetWidth
-      if (newLeft > rightEdge) {
-        newLeft = rightEdge
-      }
-
-      // 设置元素的新位置
-      ;(leftRef.current as unknown as HTMLElement).style.left = `${newLeft}px`
-      videoStore.setLeftMaskWidth(newLeft)
-      videoStore.moveStartTime(newLeft)
-    }
-
-    // 当鼠标释放时
-    function onMouseUp() {
-      // 移除鼠标移动和释放事件监听器
-      document.removeEventListener('mouseup', onMouseUp)
-      document.removeEventListener('mousemove', onMouseMove)
-    }
-  }
-
-  const onEndTimeMove = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    const thumb = rightRef.current as unknown as HTMLElement
-    const slider = imageFrameRef.current as unknown as HTMLElement
-    event.preventDefault()
-
-    // 记录鼠标相对于元素的偏移量
-    const shiftX = event.clientX - thumb.getBoundingClientRect().left
-    // 因为拖动只会水平移动，所以不需要记录 shiftY
-
-    // 添加鼠标移动和释放事件监听器
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-
-    // 当鼠标移动时
-    function onMouseMove(ev: MouseEvent) {
-      console.log('ev: ', ev)
-      // 计算元素新的左偏移量
-      let newLeft = ev.clientX - shiftX - slider.getBoundingClientRect().left
-
-      // 如果元素已经超出了左边界，则将其锁定在边界上
-      if (newLeft < 0) {
-        newLeft = 0
-      }
-      // 如果元素已经超出了右边界，则将其锁定在边界上
-      const rightEdge = videoStore.totalImageFrameWidth - thumb.offsetWidth
-      if (newLeft > rightEdge) {
-        newLeft = rightEdge
-      }
-
-      // 设置元素的新位置
-      ;(rightRef.current as unknown as HTMLElement).style.left = `${newLeft}px`
-      videoStore.setVideoImageFrameWidth(newLeft)
-      videoStore.moveEndTime(newLeft + thumb.offsetWidth)
-    }
-
-    // 当鼠标释放时
-    function onMouseUp() {
-      // 移除鼠标移动和释放事件监听器
-      document.removeEventListener('mouseup', onMouseUp)
-      document.removeEventListener('mousemove', onMouseMove)
-    }
-  }
   return (
     <Box>
       <main>
@@ -128,7 +89,13 @@ const FFmpeg = () => {
         <Box overflowX="auto">
           <FlexBox justifyContent={'flex-start'} ref={imageFrameRef} height="50px">
             <AbsoluteBox
-              onMouseDown={onStartTimeMove}
+              onMouseDown={e => {
+                onStartTimeMove(
+                  e,
+                  leftRef.current as unknown as HTMLDivElement,
+                  imageFrameRef.current as unknown as HTMLDivElement
+                )
+              }}
               cursor="col-resize"
               onDragStart={() => false}
               ref={leftRef}
@@ -188,7 +155,13 @@ const FFmpeg = () => {
             <AbsoluteBox
               left={`${videoStore.totalImageFrameWidth - 10}px`}
               cursor="col-resize"
-              onMouseDown={onEndTimeMove}
+              onMouseDown={e => {
+                onEndTimeMove(
+                  e,
+                  rightRef.current as unknown as HTMLDivElement,
+                  imageFrameRef.current as unknown as HTMLDivElement
+                )
+              }}
               onDragStart={() => false}
               ref={rightRef}
               zIndex={10}

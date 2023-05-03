@@ -71,7 +71,6 @@ const VideoCanvas = ({
       videoRef.current.currentTime = startTime
     }
     videoRef.current?.play()
-    console.log('videoRef.current: ', videoRef.current)
     setIsPlaying(true)
   }
 
